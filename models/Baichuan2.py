@@ -30,11 +30,9 @@ class Baichuan2(object):
                     self.tokenizer, 
                     messages)
 
-                break  # 如果成功执行到这里，跳出循环
+                break 
             except Exception as e:
-                print(f"出现异常：{e}")
-                print("等待 5 秒后再次运行...")
-                time.sleep(5)  # 等待 5 秒
+                time.sleep(5)
         return response
 
     def load_lora_model(self, lora_model_path):

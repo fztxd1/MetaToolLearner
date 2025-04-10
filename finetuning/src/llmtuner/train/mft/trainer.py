@@ -1540,14 +1540,11 @@ class Trainer:
                 trial=trial,
                 ignore_keys_for_eval=ignore_keys_for_eval,
             )
-###########################################################################################################################
-# 修改训练循环
-###########################################################################################################################
+
     def _inner_training_loop(
         self, batch_size=None, args=None, resume_from_checkpoint=None, trial=None, ignore_keys_for_eval=None
     ):
         self.accelerator.free_memory()
-        # 训练时使用的batch_size
         self._train_batch_size = batch_size
         if self.args.auto_find_batch_size:
             self.state.train_batch_size = self._train_batch_size
@@ -1564,13 +1561,10 @@ class Trainer:
         len_dataloader = None
         num_train_tokens = None
         if has_length(train_dataloader):
-            # 训练数据长度
             len_dataloader = len(train_dataloader)
-            # 表示在一个epoch中要执行的step数
             num_update_steps_per_epoch = len_dataloader // args.gradient_accumulation_steps
             num_update_steps_per_epoch = max(num_update_steps_per_epoch, 1)
             num_examples = self.num_examples(train_dataloader)
-            # 设定最大step数的情况下计算epoch数
             if args.max_steps > 0:
                 max_steps = args.max_steps
                 num_train_epochs = args.max_steps // num_update_steps_per_epoch + int(
@@ -1583,16 +1577,13 @@ class Trainer:
                     num_train_tokens = (
                         self.num_tokens(train_dataloader, args.max_steps) * args.gradient_accumulation_steps
                     )
-            # 没有设定最大step数的情况下计算step数
             else:
                 max_steps = math.ceil(args.num_train_epochs * num_update_steps_per_epoch)
                 num_train_epochs = math.ceil(args.num_train_epochs)
-                # 计算训练样本总数，即训练数据集中的样本数乘以训练的总 epoch 数
                 num_train_samples = self.num_examples(train_dataloader) * args.num_train_epochs
                 if args.include_tokens_per_second:
                     num_train_tokens = self.num_tokens(train_dataloader) * args.num_train_epochs
 
-        # 当训练数据没有有效的长度信息时的情况
         elif args.max_steps > 0:  # Rely on max_steps when dataloader does not have a working size
             max_steps = args.max_steps
             # Setting a very large number of epochs so we go as many times as necessary over the iterator.
@@ -1607,7 +1598,6 @@ class Trainer:
                 "args.max_steps must be set to a positive value if dataloader does not have a length, was"
                 f" {args.max_steps}"
             )
-        # 检查调试模式和多卡
         if DebugOption.UNDERFLOW_OVERFLOW in self.args.debug:
             if self.args.n_gpu > 1:
                 # nn.DataParallel(model) replicates the model, creating new variables and module
@@ -1629,16 +1619,13 @@ class Trainer:
         if self.is_deepspeed_enabled:
             self.optimizer, self.lr_scheduler = deepspeed_init(self, num_training_steps=max_steps)
 
-        # 根据给定的训练步数创建优化器和学习率调度器
         if not delay_optimizer_creation:
             self.create_optimizer_and_scheduler(num_training_steps=max_steps)
 
-        # 创建一个 TrainerState 对象，并将其赋值给 self.state，用于存储训练过程中的状态信息
         self.state = TrainerState()
         self.state.is_hyper_param_search = trial is not None
         self.state.train_batch_size = self._train_batch_size
 
-        # 记录日志的步骤数
         # Compute absolute values for logging, eval, and save if given as ratio
         if args.logging_steps is not None:
             if args.logging_steps < 1:
@@ -1650,14 +1637,12 @@ class Trainer:
                 self.state.eval_steps = math.ceil(max_steps * args.eval_steps)
             else:
                 self.state.eval_steps = args.eval_steps
-        # 保存的间隔step数
         if args.save_steps is not None:
             if args.save_steps < 1:
                 self.state.save_steps = math.ceil(max_steps * args.save_steps)
             else:
                 self.state.save_steps = args.save_steps
         
-        # 根据参数设置是否启用梯度检查点
         # Activate gradient checkpointing if needed
         if args.gradient_checkpointing:
             if args.gradient_checkpointing_kwargs is None:
@@ -1674,7 +1659,6 @@ class Trainer:
         # FSDP-XLA, SageMaker MP/DP, DataParallel, IPEX
         use_accelerator_prepare = True if model is self.model else False
 
-        # 根据给定的训练步数创建优化器和学习率调度器
         if delay_optimizer_creation:
             self.create_optimizer_and_scheduler(num_training_steps=max_steps)
 
@@ -1778,13 +1762,11 @@ class Trainer:
         self.state.is_local_process_zero = self.is_local_process_zero()
         self.state.is_world_process_zero = self.is_world_process_zero()
 
-        # 损失值
         # tr_loss is a tensor to avoid synchronization of TPUs through .item()
         tr_loss = torch.tensor(0.0).to(args.device)
         # _total_loss_scalar is updated everytime .item() has to be called on tr_loss and stores the sum of all losses
         self._total_loss_scalar = 0.0
         self._globalstep_last_logged = self.state.global_step
-        # 对模型参数进行梯度清零操作，以准备接收新一轮的梯度更新
         model.zero_grad()
 
         self.control = self.callback_handler.on_train_begin(args, self.state, self.control)
@@ -1807,17 +1789,10 @@ class Trainer:
                     sampler = sampler if sampler is not None else []
                     _ = list(sampler)
 
-        ###########################################################################################################################
-        # 训练循环过程
-        ###########################################################################################################################
         total_batched_samples = 0
-        ###########################################################################################################################
-        # 设置元学习超参数
-        ###########################################################################################################################
         # meta_optimization_steps = args.gradient_accumulation_steps
         meta_optimization_steps = 3
         for epoch in range(epochs_trained, num_train_epochs):
-            # 将 train_dataloader 赋值给 epoch_iterator，表示当前 epoch 的数据迭代器
             epoch_iterator = train_dataloader
             if hasattr(epoch_iterator, "set_epoch"):
                 epoch_iterator.set_epoch(epoch)
@@ -1846,7 +1821,6 @@ class Trainer:
 
             step = -1
             for step, inputs in enumerate(epoch_iterator):
-                # 修改循环
                 for meta_step in range(meta_optimization_steps):
                     total_batched_samples += 1
                     if self.args.include_num_input_tokens_seen:
@@ -1863,7 +1837,6 @@ class Trainer:
                         self._load_rng_state(resume_from_checkpoint)
                         rng_to_sync = False
 
-                    # 恢复训练时正确处理已经训练过的步骤
                     # Skip past any already trained steps if resuming training
                     if steps_trained_in_current_epoch > 0:
                         steps_trained_in_current_epoch -= 1
@@ -1876,19 +1849,15 @@ class Trainer:
                         steps_trained_progress_bar.close()
                         steps_trained_progress_bar = None
 
-                    # 在每个训练步骤中检查是否需要进行梯度累积
                     if (meta_step + 1) == meta_optimization_steps:
                     # if step % args.gradient_accumulation_steps == 0:
                         print("梯度积累步")
                         self.control = self.callback_handler.on_step_begin(args, self.state, self.control)
 
                     with self.accelerator.accumulate(model):
-                        # 执行一个训练step, 计算梯度
-                        # print(f"第{meta_step + 1}次处理数据:\n")
                         tr_loss_step = self.training_step(model, inputs)
                         print(f"第{meta_step + 1}step loss:{tr_loss_step}\n")
 
-                    # 处理梯度累加
                     if (
                         args.logging_nan_inf_filter
                         and not is_torch_tpu_available()
@@ -1896,27 +1865,21 @@ class Trainer:
                     ):
                         # if loss is nan or inf simply add the average of previous logged losses
                         tr_loss += tr_loss / (1 + self.state.global_step - self._globalstep_last_logged)
-                        # print(f"第{meta_step + 1}次累加loss:{tr_loss}\n")
                     else:
                         tr_loss += tr_loss_step
-                        print(f"第{meta_step + 1}次累加loss:{tr_loss}\n")
 
                     self.current_flos += float(self.floating_point_ops(inputs))
 
-                    # 检查当前步骤是否是 epoch 中的最后一步并且步数小于或等于梯度累积步数
                     is_last_step_and_steps_less_than_grad_acc = (
                         steps_in_epoch <= args.gradient_accumulation_steps and (step + 1) == steps_in_epoch
                     )
 
-                    # 修改循环判断条件为元优化的最后一个步数
                     if (
                         meta_step == (meta_optimization_steps - 1)
                         or
                         is_last_step_and_steps_less_than_grad_acc
                      ):
-                        print("更新模型")
-                    # 判断是否为梯度更新步
-                    # 若是则会进行参数更新
+                        print("update model")
                     # if (
                     #     total_batched_samples % args.gradient_accumulation_steps == 0
                     #     or
@@ -1928,7 +1891,6 @@ class Trainer:
                         if is_last_step_and_steps_less_than_grad_acc:
                             self.accelerator.gradient_state._set_sync_gradients(True)
 
-                        # 对梯度进行裁剪，以防止梯度爆炸
                         # Gradient clipping
                         if args.max_grad_norm is not None and args.max_grad_norm > 0:
                             # deepspeed does its own clipping
@@ -1947,17 +1909,14 @@ class Trainer:
                                     args.max_grad_norm,
                                 )
 
-                        # 调用优化器的 step() 方法来执行参数更新，根据计算的梯度来更新模型的参数
                         # Optimizer step
                         self.optimizer.step()
                         optimizer_was_run = not self.accelerator.optimizer_step_was_skipped
                         if optimizer_was_run:
                             # Delay optimizer scheduling until metrics are generated
                             if not isinstance(self.lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                                # 学习率调整操作
                                 self.lr_scheduler.step()
 
-                        # 清空模型参数的梯度
                         model.zero_grad()
                         self.state.global_step += 1
                         self.state.epoch = epoch + (step + 1 + steps_skipped) / steps_in_epoch
@@ -1991,9 +1950,6 @@ class Trainer:
                     )
             if self.control.should_training_stop:
                 break
-        ###########################################################################################################################
-        # 训练循环过程
-        ###########################################################################################################################
 
         if args.past_index and hasattr(self, "_past"):
             # Clean the state at the end of training
@@ -2053,9 +2009,6 @@ class Trainer:
             self._deactivate_neftune(self.model)
 
         return TrainOutput(self.state.global_step, train_loss, metrics)
-###########################################################################################################################
-# 修改训练循环
-###########################################################################################################################
     def _get_output_dir(self, trial):
         if self.hp_search_backend is not None and trial is not None:
             if self.hp_search_backend == HPSearchBackend.OPTUNA:

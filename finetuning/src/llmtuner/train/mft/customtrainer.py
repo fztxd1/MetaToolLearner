@@ -4,7 +4,6 @@ import torch
 import numpy as np
 import torch.nn as nn
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
-# from transformers import Seq2SeqTrainer
 from llmtuner.train.mft.trainer_seq2seq import Seq2SeqTrainer
 
 from llmtuner.extras.constants import IGNORE_INDEX

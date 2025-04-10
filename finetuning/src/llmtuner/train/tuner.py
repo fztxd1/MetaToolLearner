@@ -10,7 +10,6 @@ from llmtuner.train.sft import run_sft
 from llmtuner.train.rm import run_rm
 from llmtuner.train.ppo import run_ppo
 from llmtuner.train.dpo import run_dpo
-# add
 from llmtuner.train.mft import run_mft
 
 if TYPE_CHECKING:
@@ -34,7 +33,6 @@ def run_exp(args: Optional[Dict[str, Any]] = None, callbacks: Optional[List["Tra
         run_ppo(model_args, data_args, training_args, finetuning_args, generating_args, callbacks)
     elif finetuning_args.stage == "dpo":
         run_dpo(model_args, data_args, training_args, finetuning_args, callbacks)
-# add mft
     elif finetuning_args.stage == "mft":
         run_mft(model_args, data_args, training_args, finetuning_args, generating_args, callbacks)
 
@@ -77,7 +75,7 @@ def export_model(args: Optional[Dict[str, Any]] = None):
         )
 
     try:
-        tokenizer.padding_side = "left" # restore padding side
+        tokenizer.padding_side = "left"
         tokenizer.init_kwargs["padding_side"] = "left"
         tokenizer.save_pretrained(model_args.export_dir)
         if model_args.export_hub_model_id is not None:

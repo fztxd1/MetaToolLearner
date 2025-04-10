@@ -1,4 +1,4 @@
-DEFAULT_SYSTEM_PROMPT = """You are a helpful assistant. 你是一个乐于助人的助手。"""
+DEFAULT_SYSTEM_PROMPT = """You are a helpful assistant."""
 
 TEMPLATE = (
     "[INST] <<SYS>>\n"
@@ -39,11 +39,8 @@ class Chinese_LLaMa_Alpaca_2(object):
             self.model.resize_token_embeddings(self.tokenizer_vocab_size)
         self.generation_config = GenerationConfig(
             temperature=0.8,
-            # top_k=40,
             top_p=0.8,
             do_sample=True,
-            # num_beams=1,
-            # repetition_penalty=1.1,
             max_new_tokens=4096
         )
         if lora_model_path is not None:
@@ -73,9 +70,7 @@ class Chinese_LLaMa_Alpaca_2(object):
                 # print("\n")
                 break
             except Exception as e:
-                print(f"出现异常：{e}")
-                print("等待 5 秒后再次运行...")
-                time.sleep(5)  # 等待 5 秒
+                time.sleep(5)
         return response
     
     def load_lora_model(self, lora_model_path):
