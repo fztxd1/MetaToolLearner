@@ -1,0 +1,38 @@
+{
+  "toolaugmented_train_AT": {
+    "file_name": "tool_augmented_alpaca_train_AT.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "history": "history"
+    }
+  },
+  "toolaugmented_train_WT": {
+    "file_name": "tool_augmented_alpaca_train_WT.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "history": "history"
+    }
+  },
+  "toolaugmented_train_AT_meta": {
+    "file_name": "tool_augmented_alpaca_train_AT_meta.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "history": "history"
+    }
+  },
+  "toolaugmented_train_WT_meta": {
+    "file_name": "tool_augmented_alpaca_train_WT_meta.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "history": "history"
+    }
+  }
+}
